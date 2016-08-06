@@ -52,19 +52,26 @@ void ytcpsocket_set_block(int socket,int on) {
         fcntl(socket, F_SETFL, flags);
     }
 }
+/**
+ @param host 服务器的地址
+ @param port 服务器的端口
+ @param timeout 连接超时*/
 int ytcpsocket_connect(const char *host,int port,int timeout){
-    struct sockaddr_in sa;
-    struct hostent *hp;
-    int sockfd = -1;
-    hp = gethostbyname(host);
-    if(hp==NULL){
+    struct sockaddr_in sa;  //socket address地址结构
+    struct hostent *hp;  // 解析出来的host信息？
+    int sockfd = -1;     // socket fd定义
+    hp = gethostbyname(host);  //通过地址/域名获取对应的host信息（这一步是不是就可能被系统发出sig给终结掉？）
+    if(hp==NULL){               //如果无法获取到对应的host信息，那就直接连接失败
         return -1;
     }
+    // 将解析出来的host信息中的ip地址填充到sockaddr中
     bcopy((char *)hp->h_addr, (char *)&sa.sin_addr, hp->h_length);
     sa.sin_family = hp->h_addrtype;
     sa.sin_port = htons(port);
     sockfd = socket(hp->h_addrtype, SOCK_STREAM, 0);
-    ytcpsocket_set_block(sockfd,0);
+    
+    ytcpsocket_set_block(sockfd,0); // 设置tcpnodelay,能更快的发出小包
+    
     connect(sockfd, (struct sockaddr *)&sa, sizeof(sa));
     fd_set          fdwrite;
     struct timeval  tvSelect;
@@ -97,7 +104,7 @@ int ytcpsocket_close(int socketfd){
     return close(socketfd);
 }
 int ytcpsocket_pull(int socketfd,char *data,int len,int timeout_sec){
-    if (timeout_sec>0) {
+    if (timeout_sec>0) {  //处理读取超时
         fd_set fdset;
         struct timeval timeout;
         timeout.tv_usec = 0;
@@ -112,6 +119,7 @@ int ytcpsocket_pull(int socketfd,char *data,int len,int timeout_sec){
     int readlen=(int)read(socketfd,data,len);
     return readlen;
 }
+//int ytcpsocket_read(int socketfd,char )
 int ytcpsocket_send(int socketfd,const char *data,int len){
     int byteswrite=0;
     while (len-byteswrite>0) {

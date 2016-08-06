@@ -31,7 +31,7 @@ import Foundation
 import Darwin.C
 func testtcpclient(){
     //创建socket
-    let client:TCPClient = TCPClient(addr: "ixy.io", port: 80)
+    let client:TCPClient = TCPClient(addr: "www.baidu.com", port: 80)
     //连接
     var (success,errmsg)=client.connect(timeout: 1)
     if success{
@@ -39,19 +39,49 @@ func testtcpclient(){
         var (success,errmsg)=client.send(str:"GET / HTTP/1.0\n\n" )
         if success{
             //读取数据
-            let data=client.read(1024*10)
-            if let d=data{
-                if let str=String(bytes: d, encoding: NSUTF8StringEncoding){
-                    print(str)
-                }
-            }
+            let data=client.read(1024*40)
+//            if let d=data{
+//                if let str=String(bytes: d, encoding: NSUTF8StringEncoding){
+//                    print("111data="+str)
+//                }
+//            }
+            let d = String(bytes:data!,encoding:NSUTF8StringEncoding)
+            print("111data="+d!)
+            
         }else{
-            print(errmsg)
+            print("111"+errmsg)
         }
+
+
     }else{
         print(errmsg)
     }
 }
+//testtcpclient()
+
+func testHttpclient(){
+    //创建socket
+    let httpClient:HttpClient = HttpClient(addr: "m.baidu.com", port: 80)
+    //连接
+    do{
+        try httpClient.connect(timeout: 1)
+        //发送数据
+        try httpClient.send(str:"GET / HTTP/1.0\n\n" )
+            //读取数据
+            let data=httpClient.read(30)
+            let d = String(bytes:data!,encoding:NSUTF8StringEncoding)
+            print("111data="+d!)
+    }catch{
+        print(error)
+    }
+    
+    
+    
+   
+}
+testHttpclient()
+
+
 func echoService(client c:TCPClient){
     print("newclient from:\(c.addr)[\(c.port)]")
     let d=c.read(1024*10)
@@ -128,11 +158,60 @@ func testudpBroadcastclient(){
     clientB.send(str: "test hello from broadcast")
     clientB.close()
 }
+
+func test(){
+    
+    let statusLine = "HTTP/1.0 200 OK "
+    let  statusLinePattern:String = "\\A(\\S+) +(\\d+) +(.*)"
+
+    do{
+        let re = try NSRegularExpression(pattern: statusLinePattern, options: NSRegularExpressionOptions.CaseInsensitive)
+        
+        let matches = re.matchesInString(statusLine, options: NSMatchingOptions(rawValue: 0), range: NSRange(location: 0, length: statusLine.utf16.count))
+        
+        print("number of matches: \(matches.count)")
+        if matches.count > 0 {
+            print("range size="+String(matches[0].numberOfRanges))
+            //                        matches[0].numberOfRanges
+            let httpVersion = (statusLine as NSString).substringWithRange(matches[0].rangeAtIndex(1))
+            print("httpVersion="+httpVersion)
+            print("rang0="+(statusLine as NSString).substringWithRange(matches[0].rangeAtIndex(0)))
+            print("rang1="+(statusLine as NSString).substringWithRange(matches[0].rangeAtIndex(1)))
+            print("rang2="+(statusLine as NSString).substringWithRange(matches[0].rangeAtIndex(2)))
+            print("rang3="+(statusLine as NSString).substringWithRange(matches[0].rangeAtIndex(3)))
+        }
+        //
+        //                    for match in matches as [NSTextCheckingResult] {
+        //                        // range at index 0: full match
+        //                        // range at index 1: first capture group
+        //                        let substring = (statusLine as NSString).substringWithRange(match.rangeAtIndex(1))
+        //                        print(substring)
+        //                    }
+        
+        let str:String = "a \n"
+        let utf8Array = Array(str.utf8);
+        let utf16Array = Array(str.utf16);
+        let utf8Length = utf8Array.count
+        let utf16Length = utf16Array.count
+        for i in 0...utf8Length-1{
+            print("utf8=",utf8Array[i])
+        }
+        for i in 0...utf16Length-1{
+            print("utf16=",utf16Array[i])
+        }
+        
+//        print("utf16="+utf16Array)
+    }catch{
+        print(error)
+    }
+
+}
+//test()
 //testudpserver()
 //testudpclient()
 
-testudpBroadcastserver()
-testudpBroadcastclient()
+//testudpBroadcastserver()
+//testudpBroadcastclient()
 
 var stdinput=NSFileHandle.fileHandleWithStandardInput()
 stdinput.readDataToEndOfFile()
