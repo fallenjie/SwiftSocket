@@ -1,5 +1,5 @@
 //
-//  yhttpsocket.swift
+//  HttpSocket.swift
 //  SwiftSocket
 //
 //  Created by jieshao on 16/8/1.
@@ -21,7 +21,15 @@ public class HttpClient:YSocket{
      * return success or fail with message & result
      */
     public func connect(timeout t:Int) throws{
+        
+        let time1 = NSDate().timeIntervalSince1970
+        print("time1=\( time1)")
+        
         let rs:Int32=c_yhttpsocket_connect(self.addr, port: Int32(self.port), timeout: Int32(t))
+        let time2 = NSDate().timeIntervalSince1970
+        print("time2=\( time2)")
+        print("cost=\(time2-time1)")
+
         if rs>0{
             self.fd=rs
         }else{
@@ -108,14 +116,14 @@ public class HttpClient:YSocket{
         }
     }
     /*
-     * read data with expect length
-     * return success or fail with message
+     * read data with http content-length
+     * return body data
      */
     public func read(timeout:Int = -1)->[UInt8]?{
         if let fd:Int32 = self.fd{
             let parser:HttpParser = HttpParser()
             do{
-                try parser.read(fd: fd)   //TODO 这里要把时间传进去做接收超时处理
+                try parser.read(fd: fd,timeout: timeout)   //TODO 这里要把时间传进去做接收超时处理
                 return parser.responseBody
             }catch CommonError.HttpError(let errCode, let errMsg){
                 print("errCode=\(errCode) errMsg=\(errMsg)")

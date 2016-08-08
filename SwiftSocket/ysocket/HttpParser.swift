@@ -23,6 +23,7 @@ public class HttpParser{
     
     let cr = UInt8(ascii: "\r")
     let lf = UInt8(ascii: "\n")
+    let MAX_READ_RETRY_TIMES = 5
     
     
     var  httpVersion:String = ""
@@ -32,9 +33,12 @@ public class HttpParser{
     var  contentLength:Int32 = 0
     var  responseBody:[UInt8] = []
     var  functionName:String = ""
+    var  timeoutRemainder:Int = 30
     
     
-    public func read(fd fd:Int32) throws{
+    
+    public func read(fd fd:Int32,timeout:Int = -1) throws{
+        timeoutRemainder = timeout
         do{
             try readHttpStatusLine(fd: fd)
             try readHttpHeader(fd: fd)
@@ -176,18 +180,36 @@ public class HttpParser{
 //            responseBody = [UInt8](count:Int(contentLength),repeatedValue:0x0)
             var bodyCount:Int32 = 0
             var buffer:[UInt8] = [UInt8](count:1024,repeatedValue:0x0)
+            // 做下容错，如果在网络丢包严重的情况下也尝试做下几次重试
+            var retryCount = 0
+            
             while bodyCount < contentLength { // 内容还没读取完成，就要不断的读
-                let size = c_ytcpsocket_pull(tempFd, buff: &buffer, len: Int32(buffer.count), timeout: 0)
+                let time1 = CFAbsoluteTimeGetCurrent()
+                let size = c_ytcpsocket_pull(tempFd, buff: &buffer, len: Int32(buffer.count), timeout: Int32(timeoutRemainder))
+                let time2 = CFAbsoluteTimeGetCurrent()
+                let timeCost = time2-time1
+                timeoutRemainder -= Int(timeCost)
+                if timeoutRemainder<=0 {  //因为如果为0的话其实默认是无限时间
+                    timeoutRemainder == 1
+                }
                 bodyCount += size
-//                print("size=\(size)")
+//                print("size=\(size) bodyCount=\(bodyCount) contentLength=\(contentLength) retryCount=\(retryCount) timeoutRemainder=\(timeoutRemainder) timeCost=\(timeCost)")
+                if size <= 0 {  // 这一段逻辑在丢包的情况下会有问题
+                    retryCount += 1
+                    if retryCount >= MAX_READ_RETRY_TIMES {
+                        break
+                    }
+                }
+               
                 responseBody += Array(buffer[0..<Int(size)])
                 
             }
+            return Int(bodyCount)
             
 //            print("body length=\(bodyCount) \r\n result=\(String(bytes:responseBody,encoding:NSUTF8StringEncoding))")
             
         }
-        return Int(contentLength)
+        return 0
     }
     
     

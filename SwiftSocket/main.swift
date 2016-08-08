@@ -64,7 +64,7 @@ func testHttpclient(){
     let httpClient:HttpClient = HttpClient(addr: "m.baidu.com", port: 80)
     //连接
     do{
-        try httpClient.connect(timeout: 1)
+        try httpClient.connect(timeout: 10)
         //发送数据
         try httpClient.send(str:"GET / HTTP/1.0\n\n" )
             //读取数据
